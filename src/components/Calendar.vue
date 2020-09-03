@@ -3,18 +3,14 @@
     <v-col>
       <v-sheet height="64">
         <v-toolbar flat color="white">
-          <v-btn outlined class="mr-4" color="grey darken-2" @click="setToday">
-            Today
-          </v-btn>
+          <v-btn outlined class="mr-4" color="grey darken-2" @click="setToday">Today</v-btn>
           <v-btn fab text small color="grey darken-2" @click="prev">
             <v-icon small>mdi-chevron-left</v-icon>
           </v-btn>
           <v-btn fab text small color="grey darken-2" @click="next">
             <v-icon small>mdi-chevron-right</v-icon>
           </v-btn>
-          <v-toolbar-title v-if="$refs.calendar">
-            {{ $refs.calendar.title }}
-          </v-toolbar-title>
+          <v-toolbar-title v-if="$refs.calendar">{{ $refs.calendar.title }}</v-toolbar-title>
           <v-spacer></v-spacer>
           <v-menu bottom right>
             <template v-slot:activator="{ on, attrs }">
@@ -48,6 +44,8 @@
           :events="events"
           :event-color="getEventColor"
           :type="type"
+          :now="today"
+          :event-margin-bottom="3"
           @click:event="showEvent"
           @click:more="viewDay"
           @click:date="viewDay"
@@ -77,9 +75,7 @@
               <span v-html="selectedEvent.details"></span>
             </v-card-text>
             <v-card-actions>
-              <v-btn text color="secondary" @click="selectedOpen = false">
-                Cancel
-              </v-btn>
+              <v-btn text color="secondary" @click="selectedOpen = false">Cancel</v-btn>
             </v-card-actions>
           </v-card>
         </v-menu>
@@ -89,10 +85,12 @@
 </template>
 
 <script>
+import { db } from "@/main";
 export default {
   data: () => {
     return {
       focus: new Date().toISOString().substring(0, 10),
+      today: new Date().toISOString().substring(0, 10),
       type: "month",
       typeToLabel: {
         month: "Month",
@@ -112,6 +110,23 @@ export default {
       events: [],
       dialog: false,
     };
+  },
+  mounted() {
+    this.getEventsFromFB();
+  },
+  methods: {
+    async getEventsFromFB() {
+      let snapshot = await db.collection("calEvent").get();
+      // let events = [];
+      snapshot.forEach((doc) => {
+        let event = doc.data();
+        event.id = doc.id;
+        this.events.push(event);
+      });
+    },
+    getEventColor(event) {
+      return event.color;
+    },
   },
 };
 </script>
