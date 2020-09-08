@@ -59,23 +59,33 @@
         >
           <v-card color="grey lighten-4" min-width="350px" flat>
             <v-toolbar :color="selectedEvent.color" dark>
-              <v-btn icon>
-                <v-icon>mdi-pencil</v-icon>
+              <v-btn icon @click="deleteEvent(selectedEvent)">
+                <v-icon>mdi-delete</v-icon>
               </v-btn>
               <v-toolbar-title v-html="selectedEvent.name"></v-toolbar-title>
               <v-spacer></v-spacer>
-              <v-btn icon>
-                <v-icon>mdi-heart</v-icon>
-              </v-btn>
-              <v-btn icon>
-                <v-icon>mdi-dots-vertical</v-icon>
-              </v-btn>
             </v-toolbar>
             <v-card-text>
-              <span v-html="selectedEvent.details"></span>
+              <form v-if="currentlyEditing !== selectedEvent.id">{{selectedEvent.detail}}</form>
+              <form v-else>
+                <textarea-autosize
+                  v-model="selectedEvent.detail"
+                  type="text"
+                  style="width: 100%"
+                  placeholder="add note"
+                  :min-height="100"
+                ></textarea-autosize>
+              </form>
             </v-card-text>
             <v-card-actions>
-              <v-btn text color="secondary" @click="selectedOpen = false">Cancel</v-btn>
+              <v-btn
+                text
+                v-if="currentlyEditing !== selectedEvent.id"
+                color="secondary"
+                @click.prevent="editEvent(selectedEvent)"
+              >Edit</v-btn>
+              <v-btn text v-else color="secondary" @click.prevent="updateEvent(selectedEvent)">Save</v-btn>
+              <v-btn text color="secondary" @click="selectedOpen = false">Close</v-btn>
             </v-card-actions>
           </v-card>
         </v-menu>
@@ -124,7 +134,29 @@ export default {
         this.events.push(event);
       });
     },
+    async updateEvent(selectedEvent) {
+      await db.collection("calEvent").doc(this.currentlyEditing).update({
+        detail: selectedEvent.detail,
+      });
+      this.selectedOpen = false;
+      this.currentlyEditing = null;
+      console.log(selectedEvent);
+    },
 
+    async deleteEvent(selectedEvent) {
+      await db
+        .collection("calEvent")
+        .doc(selectedEvent)
+        .delete()
+        .then(() => {
+          console.log("Document successfully deleted!");
+        })
+        .catch((err) => {
+          console.log("Error removing document: ", err);
+        });
+      this.selectedOpen = false;
+      this.getEvents();
+    },
     viewDay({ date }) {
       this.focus = date;
       this.type = "day";
@@ -141,8 +173,12 @@ export default {
     next() {
       this.$refs.calendar.next();
     },
+    editEvent(event) {
+      this.currentlyEditing = event.id;
+    },
     showEvent({ nativeEvent, event }) {
       const open = () => {
+        console.log("event: ", event);
         this.selectedEvent = event;
         this.selectedElement = nativeEvent.target;
         setTimeout(() => (this.selectedOpen = true), 10);
