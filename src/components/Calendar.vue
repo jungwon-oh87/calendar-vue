@@ -3,6 +3,13 @@
     <v-col>
       <v-sheet height="64">
         <v-toolbar flat color="white">
+          <v-btn
+            class="mr-4 px-10"
+            color="deep-purple accent-4"
+            dark
+            raised
+            @click="dialog = true"
+          >Add</v-btn>
           <v-btn outlined class="mr-4" color="grey darken-2" @click="setToday">Today</v-btn>
           <v-btn fab text small color="grey darken-2" @click="prev">
             <v-icon small>mdi-chevron-left</v-icon>
@@ -36,6 +43,27 @@
           </v-menu>
         </v-toolbar>
       </v-sheet>
+
+      <!-- Add Event Dialog -->
+      <v-dialog v-model="dialog" max-width="500">
+        <v-card>
+          <v-form @submit.prevent="addEvent" class="px-8 py-8">
+            <v-text-field v-model="name" type="text" label="Name" required></v-text-field>
+            <v-text-field v-model="details" type="text" label="Detail" required></v-text-field>
+            <v-text-field v-model="start" type="date" label="Start Date" required></v-text-field>
+            <v-text-field v-model="end" type="date" label="End Date" required></v-text-field>
+            <v-color-picker v-model="color"></v-color-picker>
+            <v-btn
+              type="submit"
+              color="deep-purple accent-4"
+              dark
+              class="mr-4"
+              @click.stop="dialog=false"
+            >Submit</v-btn>
+          </v-form>
+        </v-card>
+      </v-dialog>
+
       <v-sheet height="600">
         <v-calendar
           ref="calendar"
@@ -127,12 +155,13 @@ export default {
   methods: {
     async getEventsFromFB() {
       let snapshot = await db.collection("calEvent").get();
-      // let events = [];
+      let events = [];
       snapshot.forEach((doc) => {
         let event = doc.data();
         event.id = doc.id;
-        this.events.push(event);
+        events.push(event);
       });
+      this.events = events;
     },
     async updateEvent(selectedEvent) {
       await db.collection("calEvent").doc(this.currentlyEditing).update({
@@ -142,11 +171,10 @@ export default {
       this.currentlyEditing = null;
       console.log(selectedEvent);
     },
-
     async deleteEvent(selectedEvent) {
       await db
         .collection("calEvent")
-        .doc(selectedEvent)
+        .doc(selectedEvent.id)
         .delete()
         .then(() => {
           console.log("Document successfully deleted!");
@@ -155,7 +183,27 @@ export default {
           console.log("Error removing document: ", err);
         });
       this.selectedOpen = false;
-      this.getEvents();
+      this.getEventsFromFB();
+      console.log("delete event done");
+    },
+    async addEvent() {
+      if (this.name && this.details && this.start && this.end) {
+        await db.collection("calEvent").add({
+          color: this.color,
+          name: this.name,
+          detail: this.details,
+          start: this.start,
+          end: this.end,
+        });
+        this.getEventsFromFB();
+        this.name = "";
+        this.details = "";
+        this.start = "";
+        this.end = "";
+        this.color = "";
+      } else {
+        alert("fill required fields, please");
+      }
     },
     viewDay({ date }) {
       this.focus = date;
